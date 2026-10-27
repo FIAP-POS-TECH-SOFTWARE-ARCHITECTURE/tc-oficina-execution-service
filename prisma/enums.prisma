@@ -1,0 +1,24 @@
+enum EtapaExecucao {
+  DIAGNOSTICO
+  REPARO
+}
+
+enum StatusOrdemExecucao {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  REJEITADA
+  INVIAVEL
+  CANCELADA
+}
+
+enum TipoItemExecucao {
+  SERVICO
+  INSUMO
+}
+
+enum StatusItemExecucao {
+  PENDENTE
+  EM_EXECUCAO
+  CONCLUIDO
+}

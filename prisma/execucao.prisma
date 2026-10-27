@@ -1,0 +1,75 @@
+/// Ordem de trabalho do mecânico para uma etapa da OS. Uma por (osId, etapa) em qualquer status.
+model OrdemExecucao {
+  id                     String              @id @db.Uuid
+  osId                   String              @map("os_id") @db.Uuid
+  fluxoId                String              @map("fluxo_id") @db.Uuid
+  numeroOs               String              @map("numero_os")
+  etapa                  EtapaExecucao
+  status                 StatusOrdemExecucao @default(PENDENTE)
+  mecanicoId             String?             @map("mecanico_id") @db.Uuid
+  cliente                Json?
+  veiculo                Json?
+  observacoesAtendimento String?             @map("observacoes_atendimento")
+  diagnostico            String?
+  motivo                 String?
+  iniciadaEm             DateTime?           @map("iniciada_em")
+  finalizadaEm           DateTime?           @map("finalizada_em")
+  createdAt              DateTime            @default(now()) @map("created_at")
+  updatedAt              DateTime            @updatedAt @map("updated_at")
+
+  itens     ItemExecucao[]
+  historico HistoricoExecucao[]
+
+  @@unique([osId, etapa])
+  @@index([etapa, status, createdAt])
+  @@map("ordens_execucao")
+}
+
+/// No diagnóstico: o que o mecânico apontou. No reparo: o que foi aprovado e pago.
+/// `status` só existe para itens de serviço de ordens de reparo.
+model ItemExecucao {
+  id               String              @id @default(uuid()) @db.Uuid
+  ordemExecucaoId  String              @map("ordem_execucao_id") @db.Uuid
+  tipo             TipoItemExecucao
+  referenciaId     String              @map("referencia_id") @db.Uuid
+  itemOsId         String?             @map("item_os_id") @db.Uuid
+  nome             String
+  quantidade       Int
+  tempoEstimadoMin Int?                @map("tempo_estimado_min")
+  status           StatusItemExecucao?
+  iniciadoEm       DateTime?           @map("iniciado_em")
+  concluidoEm      DateTime?           @map("concluido_em")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  ordemExecucao OrdemExecucao @relation(fields: [ordemExecucaoId], references: [id], onDelete: Cascade)
+
+  @@index([ordemExecucaoId])
+  @@map("itens_execucao")
+}
+
+model HistoricoExecucao {
+  id              String               @id @default(uuid()) @db.Uuid
+  ordemExecucaoId String               @map("ordem_execucao_id") @db.Uuid
+  statusAnterior  StatusOrdemExecucao? @map("status_anterior")
+  statusNovo      StatusOrdemExecucao  @map("status_novo")
+  usuarioId       String?              @map("usuario_id") @db.Uuid
+  observacao      String?
+  messageId       String?              @map("message_id") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  ordemExecucao OrdemExecucao @relation(fields: [ordemExecucaoId], references: [id], onDelete: Cascade)
+
+  @@index([ordemExecucaoId])
+  @@map("historico_execucao")
+}
+
+/// Fluxo cancelado pelo orquestrador (contrato §2 regra 4): comando de criação posterior não cria ordem.
+model FluxoCancelado {
+  fluxoId     String   @id @map("fluxo_id") @db.Uuid
+  osId        String   @map("os_id") @db.Uuid
+  motivo      String
+  canceladoEm DateTime @default(now()) @map("cancelado_em")
+
+  @@map("fluxos_cancelados")
+}

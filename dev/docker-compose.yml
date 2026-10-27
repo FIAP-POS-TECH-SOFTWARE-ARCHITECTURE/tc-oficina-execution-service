@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: execution-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: execution
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d execution"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ministack:
+    image: ministackorg/ministack:1.5.17
+    container_name: oficina-execution-ministack-dev
+    ports:
+      - "4566:4566"
+    environment:
+      MINISTACK_REGION: us-east-1
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: oficina-execution-sonarqube-dev
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+
+volumes:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
