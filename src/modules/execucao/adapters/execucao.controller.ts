@@ -6,6 +6,7 @@ import { CurrentUser, type AuthenticatedUser } from "../../../common/decorators/
 import { Roles } from "../../../common/decorators/roles.decorator";
 import { Role } from "../../../common/enums/role.enum";
 import { correlationIdDaRequisicao } from "../../../common/utils/correlation-id.util";
+import { AtualizarItemReparoUseCase } from "../application/use-cases/atualizar-item-reparo.use-case";
 import { BuscarOrdemUseCase } from "../application/use-cases/buscar-ordem.use-case";
 import { ConcluirReparoUseCase } from "../application/use-cases/concluir-reparo.use-case";
 import { ConsultarCatalogoUseCase } from "../application/use-cases/consultar-catalogo.use-case";
@@ -37,6 +38,7 @@ export class ExecucaoController {
 		private readonly concluirReparo: ConcluirReparoUseCase,
 		private readonly declararInviavel: DeclararReparoInviavelUseCase,
 		private readonly catalogo: ConsultarCatalogoUseCase,
+		private readonly atualizarItem: AtualizarItemReparoUseCase,
 	) {}
 
 	@Get("fila")
@@ -108,6 +110,30 @@ export class ExecucaoController {
 		@Req() req: Request,
 	) {
 		return this.declararInviavel.execute(id, dto.motivo, usuario, correlationIdDaRequisicao(req));
+	}
+
+	@Post("ordens/:ordemExecucaoId/reparo/itens/:itemId/iniciar")
+	@HttpCode(200)
+	@ApiOperation({ summary: "Inicia um serviço do reparo (opcional; concluir o reparo conclui os pendentes)" })
+	@ApiEnvelopedResponse(OrdemExecucaoResponseDto)
+	iniciarItem(
+		@Param("ordemExecucaoId", ID) id: string,
+		@Param("itemId", ID) itemId: string,
+		@CurrentUser() usuario: AuthenticatedUser,
+	) {
+		return this.atualizarItem.execute(id, itemId, "INICIAR", usuario);
+	}
+
+	@Post("ordens/:ordemExecucaoId/reparo/itens/:itemId/concluir")
+	@HttpCode(200)
+	@ApiOperation({ summary: "Conclui um serviço do reparo" })
+	@ApiEnvelopedResponse(OrdemExecucaoResponseDto)
+	concluirItem(
+		@Param("ordemExecucaoId", ID) id: string,
+		@Param("itemId", ID) itemId: string,
+		@CurrentUser() usuario: AuthenticatedUser,
+	) {
+		return this.atualizarItem.execute(id, itemId, "CONCLUIR", usuario);
 	}
 
 	@Get("catalogo/servicos")

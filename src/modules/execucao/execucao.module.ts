@@ -7,6 +7,7 @@ import { ConsumidorComandosExecucao } from "./adapters/mensageria/consumidor-com
 import { CATALOGO_OS } from "./application/ports/catalogo-os.port";
 import { ORDENS_EXECUCAO_GATEWAY } from "./application/ports/ordens-execucao.gateway";
 import { ExecutorAcaoOrdem } from "./application/services/executor-acao-ordem";
+import { AtualizarItemReparoUseCase } from "./application/use-cases/atualizar-item-reparo.use-case";
 import { BuscarOrdemUseCase } from "./application/use-cases/buscar-ordem.use-case";
 import { CancelarExecucaoUseCase } from "./application/use-cases/cancelar-execucao.use-case";
 import { ConcluirReparoUseCase } from "./application/use-cases/concluir-reparo.use-case";
@@ -34,6 +35,7 @@ import { RejeitarDiagnosticoUseCase } from "./application/use-cases/rejeitar-dia
 		ConcluirReparoUseCase,
 		DeclararReparoInviavelUseCase,
 		ConsultarCatalogoUseCase,
+		AtualizarItemReparoUseCase,
 		{ provide: ORDENS_EXECUCAO_GATEWAY, useClass: OrdensExecucaoPrismaGateway },
 		{
 			provide: CATALOGO_OS,
