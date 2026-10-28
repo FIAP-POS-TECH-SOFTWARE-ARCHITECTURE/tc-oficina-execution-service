@@ -48,13 +48,14 @@ function fakes() {
 			count: jest.fn().mockResolvedValue(0),
 			findUniqueOrThrow: jest.fn().mockResolvedValue(registro()),
 		},
-		itemExecucao: { createMany: jest.fn(), updateMany: jest.fn() },
+		itemExecucao: { createMany: jest.fn(), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
 		historicoExecucao: { create: jest.fn() },
 		outboxMensagem: { createMany: jest.fn() },
 	};
 	const prisma = {
 		$transaction: jest.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
 		ordemExecucao: { findUnique: jest.fn(), findMany: jest.fn() },
+		historicoExecucao: { findMany: jest.fn() },
 		fluxoCancelado: { findUnique: jest.fn() },
 	};
 	return { tx, prisma, gateway: new OrdensExecucaoPrismaGateway(prisma as never) };
@@ -188,5 +189,84 @@ describe("OrdensExecucaoPrismaGateway", () => {
 		await expect(gateway.transicionar(base)).rejects.toThrow(TransicaoConcorrenteError);
 		expect(tx.ordemExecucao.update).not.toHaveBeenCalled();
 		expect(tx.mensagemProcessada.createMany).not.toHaveBeenCalled();
+	});
+});
+
+describe("OrdensExecucaoPrismaGateway — filas", () => {
+	it("listarFila: pendentes da etapa por ordem de chegada", async () => {
+		const { prisma, gateway } = fakes();
+		prisma.ordemExecucao.findMany.mockResolvedValue([registro()]);
+		await gateway.listarFila("REPARO");
+		expect(prisma.ordemExecucao.findMany.mock.calls[0][0]).toMatchObject({
+			where: { etapa: "REPARO", status: "PENDENTE" },
+			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+		});
+	});
+
+	it("pegarProxima: SKIP LOCKED na mesma transação do update, histórico e outbox", async () => {
+		const { tx, gateway } = fakes();
+		tx.$queryRaw.mockResolvedValueOnce([{ id: "o-1" }]);
+		const montarEvento = jest.fn().mockReturnValue(evento);
+		const agora = new Date();
+		await gateway.pegarProxima({ etapa: "DIAGNOSTICO", mecanicoId: "u-1", agora, montarEvento });
+		const texto = sql(tx.$queryRaw);
+		expect(texto).toContain(`CAST(? AS "EtapaExecucao")`);
+		expect(texto).toMatch(/status = 'PENDENTE'\s+ORDER BY created_at, id\s+LIMIT 1\s+FOR UPDATE SKIP LOCKED/);
+		expect(tx.$queryRaw.mock.calls[0][1]).toBe("DIAGNOSTICO");
+		expect(montarEvento).toHaveBeenCalledWith(expect.objectContaining({ id: "o-1", status: "PENDENTE" }));
+		expect(tx.ordemExecucao.update).toHaveBeenCalledWith({
+			where: { id: "o-1" },
+			data: { status: "EM_ANDAMENTO", mecanicoId: "u-1", iniciadaEm: agora },
+		});
+		expect(tx.historicoExecucao.create.mock.calls[0][0].data).toMatchObject({
+			statusAnterior: "PENDENTE",
+			statusNovo: "EM_ANDAMENTO",
+			usuarioId: "u-1",
+			messageId: evento.messageId,
+		});
+		expect(tx.outboxMensagem.createMany).toHaveBeenCalledTimes(1);
+	});
+
+	it("pegarProxima: fila vazia → null sem escrita", async () => {
+		const { tx, gateway } = fakes();
+		tx.$queryRaw.mockResolvedValueOnce([]);
+		await expect(
+			gateway.pegarProxima({ etapa: "REPARO", mecanicoId: "u", agora: new Date(), montarEvento: jest.fn() }),
+		).resolves.toBeNull();
+		expect(tx.ordemExecucao.update).not.toHaveBeenCalled();
+	});
+
+	it("listarHistorico ordena do mais antigo para o mais novo", async () => {
+		const { prisma, gateway } = fakes();
+		prisma.historicoExecucao.findMany.mockResolvedValue([]);
+		await gateway.listarHistorico("o-1");
+		expect(prisma.historicoExecucao.findMany.mock.calls[0][0]).toMatchObject({
+			where: { ordemExecucaoId: "o-1" },
+			orderBy: { createdAt: "asc" },
+		});
+	});
+
+	it("atualizarItem: trava a ordem, exige EM_ANDAMENTO e o status de origem do item", async () => {
+		const { tx, gateway } = fakes();
+		const em = new Date();
+		const p = {
+			ordemId: "o-1",
+			itemId: "i-1",
+			de: "PENDENTE" as const,
+			para: "EM_EXECUCAO" as const,
+			em,
+			usuarioId: "u",
+			observacao: "Serviço Troca iniciado",
+		};
+		tx.$queryRaw.mockResolvedValue([{ status: "EM_ANDAMENTO" }]);
+		await gateway.atualizarItem(p);
+		expect(tx.itemExecucao.updateMany).toHaveBeenCalledWith({
+			where: { id: "i-1", ordemExecucaoId: "o-1", tipo: "SERVICO", status: "PENDENTE" },
+			data: { status: "EM_EXECUCAO", iniciadoEm: em },
+		});
+		tx.itemExecucao.updateMany.mockResolvedValueOnce({ count: 0 });
+		await expect(gateway.atualizarItem(p)).rejects.toThrow(TransicaoConcorrenteError);
+		tx.$queryRaw.mockResolvedValue([{ status: "CANCELADA" }]);
+		await expect(gateway.atualizarItem({ ...p, de: "EM_EXECUCAO", para: "CONCLUIDO" })).rejects.toThrow(TransicaoConcorrenteError);
 	});
 });
