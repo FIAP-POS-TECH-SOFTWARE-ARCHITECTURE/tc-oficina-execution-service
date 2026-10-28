@@ -74,6 +74,33 @@ export interface TransicaoOrdemExecucao {
 	mensagem?: MensagemRecebida;
 }
 
+export interface HistoricoExecucaoItem {
+	id: string;
+	statusAnterior: StatusOrdemExecucao | null;
+	statusNovo: StatusOrdemExecucao;
+	usuarioId: string | null;
+	observacao: string | null;
+	messageId: string | null;
+	createdAt: Date;
+}
+
+export interface PegarProximaParams {
+	etapa: EtapaExecucao;
+	mecanicoId: string;
+	agora: Date;
+	montarEvento: (ordem: OrdemExecucao) => EnvelopeMensagem<unknown>;
+}
+
+export interface AtualizacaoItem {
+	ordemId: string;
+	itemId: string;
+	de: StatusItemExecucao;
+	para: StatusItemExecucao;
+	em: Date;
+	usuarioId: string;
+	observacao: string;
+}
+
 export interface OrdensExecucaoGatewayPort {
 	buscarPorId(id: string): Promise<OrdemExecucao | null>;
 	buscarPorOsEEtapa(osId: string, etapa: EtapaExecucao): Promise<OrdemExecucao | null>;
@@ -93,4 +120,12 @@ export interface OrdensExecucaoGatewayPort {
 	): Promise<void>;
 	/** Lança `TransicaoConcorrenteError` se o status travado não estiver em `de`. */
 	transicionar(t: TransicaoOrdemExecucao): Promise<OrdemExecucao>;
+	/** Pendentes da etapa por ordem de chegada. */
+	listarFila(etapa: EtapaExecucao): Promise<OrdemExecucao[]>;
+	/** `null` = fila vazia (ou todas travadas por outras transações). */
+	pegarProxima(p: PegarProximaParams): Promise<OrdemExecucao | null>;
+	/** Mais antigo primeiro. */
+	listarHistorico(ordemId: string): Promise<HistoricoExecucaoItem[]>;
+	/** Lança `TransicaoConcorrenteError` se a ordem não estiver `EM_ANDAMENTO` ou o item não estiver em `de`. */
+	atualizarItem(p: AtualizacaoItem): Promise<OrdemExecucao>;
 }

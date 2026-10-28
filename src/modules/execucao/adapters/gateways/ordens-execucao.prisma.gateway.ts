@@ -3,11 +3,14 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../../../prisma/prisma.service";
 import type { EnvelopeMensagem } from "../../../mensageria/envelope";
 import {
+	AtualizacaoItem,
 	CancelamentoFluxo,
+	HistoricoExecucaoItem,
 	MensagemJaProcessadaError,
 	MensagemRecebida,
 	NovaOrdemExecucao,
 	OrdensExecucaoGatewayPort,
+	PegarProximaParams,
 	TransicaoOrdemExecucao,
 } from "../../application/ports/ordens-execucao.gateway";
 import { FluxoCanceladoError, TransicaoConcorrenteError } from "../../domain/erros-execucao";
@@ -170,6 +173,86 @@ export class OrdensExecucaoPrismaGateway implements OrdensExecucaoGatewayPort {
 			});
 			await gravarOutbox(tx, t.eventos);
 			return buscarNaTx(tx, t.ordemId);
+		});
+	}
+
+	async listarFila(etapa: EtapaExecucao): Promise<OrdemExecucao[]> {
+		const rs = await this.prisma.ordemExecucao.findMany({
+			where: { etapa, status: "PENDENTE" },
+			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+			include: INCLUIR_ITENS,
+		});
+		return rs.map(paraOrdemExecucao);
+	}
+
+	/** Duas transações concorrentes nunca recebem a mesma linha: a travada é pulada, não esperada. */
+	async pegarProxima(p: PegarProximaParams): Promise<OrdemExecucao | null> {
+		return this.prisma.$transaction(async (tx) => {
+			const [livre] = await tx.$queryRaw<{ id: string }[]>`
+				SELECT id FROM ordens_execucao
+				WHERE etapa = CAST(${p.etapa} AS "EtapaExecucao") AND status = 'PENDENTE'
+				ORDER BY created_at, id
+				LIMIT 1
+				FOR UPDATE SKIP LOCKED`;
+			if (!livre) return null;
+			const evento = p.montarEvento(await buscarNaTx(tx, livre.id));
+			await tx.ordemExecucao.update({
+				where: { id: livre.id },
+				data: { status: "EM_ANDAMENTO", mecanicoId: p.mecanicoId, iniciadaEm: p.agora },
+			});
+			await tx.historicoExecucao.create({
+				data: {
+					ordemExecucaoId: livre.id,
+					statusAnterior: "PENDENTE",
+					statusNovo: "EM_ANDAMENTO",
+					usuarioId: p.mecanicoId,
+					observacao: "Ordem pega da fila pelo mecânico",
+					messageId: evento.messageId,
+				},
+			});
+			await gravarOutbox(tx, [evento]);
+			return buscarNaTx(tx, livre.id);
+		});
+	}
+
+	async listarHistorico(ordemId: string): Promise<HistoricoExecucaoItem[]> {
+		return this.prisma.historicoExecucao.findMany({
+			where: { ordemExecucaoId: ordemId },
+			orderBy: { createdAt: "asc" },
+			select: {
+				id: true,
+				statusAnterior: true,
+				statusNovo: true,
+				usuarioId: true,
+				observacao: true,
+				messageId: true,
+				createdAt: true,
+			},
+		});
+	}
+
+	async atualizarItem(p: AtualizacaoItem): Promise<OrdemExecucao> {
+		return this.prisma.$transaction(async (tx) => {
+			const [travada] = await tx.$queryRaw<{ status: StatusOrdemExecucao }[]>`
+				SELECT status::text AS status FROM ordens_execucao WHERE id = ${p.ordemId}::uuid FOR UPDATE`;
+			if (travada?.status !== "EM_ANDAMENTO") throw new TransicaoConcorrenteError(p.ordemId);
+			const data = p.para === "EM_EXECUCAO" ? { status: p.para, iniciadoEm: p.em } : { status: p.para, concluidoEm: p.em };
+			const { count } = await tx.itemExecucao.updateMany({
+				where: { id: p.itemId, ordemExecucaoId: p.ordemId, tipo: "SERVICO", status: p.de },
+				data,
+			});
+			if (count === 0) throw new TransicaoConcorrenteError(p.ordemId);
+			await tx.historicoExecucao.create({
+				data: {
+					ordemExecucaoId: p.ordemId,
+					statusAnterior: "EM_ANDAMENTO",
+					statusNovo: "EM_ANDAMENTO",
+					usuarioId: p.usuarioId,
+					observacao: p.observacao,
+					messageId: null,
+				},
+			});
+			return buscarNaTx(tx, p.ordemId);
 		});
 	}
 }

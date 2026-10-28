@@ -57,6 +57,33 @@ describe("configurarApp", () => {
 		await request(app.getHttpServer()).get("/execucao/restrito").set("authorization", `Bearer ${atendente}`).expect(403);
 	});
 
+	it("limite de requisições é por usuário autenticado, não pelo IP compartilhado do gateway", async () => {
+		const ana = await jwt.signAsync({ sub: "ana", email: "a@o", role: "ADMINISTRADOR" });
+		const bruno = await jwt.signAsync({ sub: "bruno", email: "b@o", role: "ADMINISTRADOR" });
+		const restante = async (token: string) =>
+			Number(
+				(await request(app.getHttpServer()).get("/execucao/restrito").set("authorization", `Bearer ${token}`)).headers[
+					"ratelimit-remaining"
+				],
+			);
+		await restante(ana);
+		const anaDepois = await restante(ana);
+		expect(await restante(bruno)).toBe(anaDepois + 1);
+	});
+
+	it("token com assinatura inválida conta no limite do IP (sub forjado não abre limite novo)", async () => {
+		const forjado = await new JwtService({ secret: "outro" }).signAsync({ sub: "x", role: "ADMINISTRADOR" });
+		const outroForjado = await new JwtService({ secret: "outro" }).signAsync({ sub: "y", role: "ADMINISTRADOR" });
+		const restante = async (token: string) =>
+			Number(
+				(await request(app.getHttpServer()).get("/execucao/restrito").set("authorization", `Bearer ${token}`)).headers[
+					"ratelimit-remaining"
+				],
+			);
+		const primeiro = await restante(forjado);
+		expect(await restante(outroForjado)).toBe(primeiro - 1);
+	});
+
 	it("publica o Swagger em /execucao/docs", async () => {
 		const res = await request(app.getHttpServer()).get("/execucao/docs-json").expect(200);
 		expect(res.body.info.title).toBe("Oficina Execution Service");
