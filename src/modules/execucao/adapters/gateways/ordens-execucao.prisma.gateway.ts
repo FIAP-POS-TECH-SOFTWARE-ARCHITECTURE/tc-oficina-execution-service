@@ -37,7 +37,11 @@ export async function gravarOutbox(tx: Tx, eventos: EnvelopeMensagem<unknown>[])
 	});
 }
 
-/** Serializa, entre réplicas, criação e cancelamento do mesmo fluxo (a mensagem perdedora volta à fila). */
+/**
+ * Serializa, entre réplicas, criação e cancelamento do mesmo fluxo (a mensagem perdedora volta à fila).
+ * A conferência feita depois do lock só enxerga o commit da outra transação em READ COMMITTED (padrão do
+ * Postgres): não subir o isolamento destas transações nem mover a conferência para antes do lock.
+ */
 async function travarFluxo(tx: Tx, fluxoId: string): Promise<void> {
 	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${fluxoId}))`;
 }
