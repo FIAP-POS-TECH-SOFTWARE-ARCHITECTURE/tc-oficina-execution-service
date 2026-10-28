@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: execution-service-db-migrate
+  labels:
+    app: execution-service
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: PLACEHOLDER_IMAGE
+          command: ["npx", "prisma", "migrate", "deploy"]
+          envFrom:
+            - secretRef:
+                name: execution-service-secrets
