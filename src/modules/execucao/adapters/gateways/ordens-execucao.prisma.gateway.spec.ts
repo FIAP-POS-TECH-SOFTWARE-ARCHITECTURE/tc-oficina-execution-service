@@ -4,7 +4,10 @@ import { MensagemJaProcessadaError } from "../../application/ports/ordens-execuc
 import { FluxoCanceladoError, TransicaoConcorrenteError } from "../../domain/erros-execucao";
 import { OrdensExecucaoPrismaGateway } from "./ordens-execucao.prisma.gateway";
 
-jest.mock("../../../mensageria/trace", () => ({ capturarCabecalhosTrace: () => ({ traceparent: "00-t-1-01" }) }));
+jest.mock("../../../mensageria/trace", () => ({
+	...jest.requireActual("../../../mensageria/trace"),
+	capturarCabecalhosTrace: () => ({ traceparent: "00-t-1-01" }),
+}));
 
 const agora = new Date("2026-11-01T10:00:00.000Z");
 const ref = { fluxoId: "f-1", osId: "os-1", numeroOs: "OS-2026-000123" };

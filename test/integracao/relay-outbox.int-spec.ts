@@ -9,7 +9,10 @@ import { PrismaService } from "../../src/prisma/prisma.service";
 import { iniciarPostgres, limparBanco } from "../helpers/postgres";
 
 jest.setTimeout(180_000);
-jest.mock("../../src/modules/mensageria/trace", () => ({ capturarCabecalhosTrace: jest.fn(() => ({})) }));
+jest.mock("../../src/modules/mensageria/trace", () => ({
+	...jest.requireActual("../../src/modules/mensageria/trace"),
+	capturarCabecalhosTrace: jest.fn(() => ({})),
+}));
 
 describe("RelayOutbox com duas réplicas (Postgres)", () => {
 	let postgres: StartedPostgreSqlContainer;
