@@ -100,6 +100,7 @@
 		"@testcontainers/postgresql": "^12.2.1",
 		"@types/express": "^5.0.6",
 		"@types/jest": "^30.0.0",
+		"@types/newrelic": "^9.14.8",
 		"@types/node": "^22.20.5",
 		"@types/supertest": "^6.0.3",
 		"eslint": "^9.39.5",
