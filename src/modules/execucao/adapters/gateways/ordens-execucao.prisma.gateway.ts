@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../../../prisma/prisma.service";
 import type { EnvelopeMensagem } from "../../../mensageria/envelope";
+import { capturarCabecalhosTrace } from "../../../mensageria/trace";
 import {
 	AtualizacaoItem,
 	CancelamentoFluxo,
@@ -29,6 +30,7 @@ export async function registrarMensagem(tx: Tx, mensagem: MensagemRecebida): Pro
 
 export async function gravarOutbox(tx: Tx, eventos: EnvelopeMensagem<unknown>[]): Promise<void> {
 	if (eventos.length === 0) return;
+	const cabecalhosTrace = capturarCabecalhosTrace();
 	await tx.outboxMensagem.createMany({
 		data: eventos.map((e) => ({
 			messageId: e.messageId,
@@ -36,6 +38,7 @@ export async function gravarOutbox(tx: Tx, eventos: EnvelopeMensagem<unknown>[])
 			tipo: e.tipo,
 			destino: "eventos",
 			corpo: e as unknown as Prisma.InputJsonValue,
+			cabecalhosTrace,
 		})),
 	});
 }
