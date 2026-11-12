@@ -86,6 +86,7 @@ Todas passam pelo API Gateway com o prefixo `/execucao` e exigem JWT de staff co
 | `POST /execucao/ordens/:ordemExecucaoId/reparo/itens/:itemId/iniciar` e `.../concluir` | acompanhar cada serviço do reparo (`PENDENTE` → `EM_EXECUCAO` → `CONCLUIDO`) |
 | `GET /execucao/catalogo/servicos`, `GET /execucao/catalogo/insumos` | repassar o catálogo do os-service |
 | `GET /health` | pública, sem prefixo, probe do Kubernetes |
+| `GET /health/ready` | pública, sem prefixo, readiness (consulta o Postgres) |
 
 ## 4. Máquina de estados da ordem
 
