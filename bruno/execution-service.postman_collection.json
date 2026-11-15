@@ -48,8 +48,8 @@
                 "packages": {},
                 "requests": {},
                 "exec": [
-                  "if (pm.response.body && pm.response.body.data && pm.response.body.data.accessToken) {",
-                  "  pm.environment.set(\"token\", pm.response.body.data.accessToken);",
+                  "if (pm.response.json() && pm.response.json().data && pm.response.json().data.accessToken) {",
+                  "  pm.environment.set(\"token\", pm.response.json().data.accessToken);",
                   "}"
                 ]
               }
@@ -164,8 +164,8 @@
                 "packages": {},
                 "requests": {},
                 "exec": [
-                  "if (pm.response.code === 200 && pm.response.body && pm.response.body.data) {",
-                  "  pm.environment.set(\"ordemExecucaoId\", pm.response.body.data.id);",
+                  "if (pm.response.code === 200 && pm.response.json() && pm.response.json().data) {",
+                  "  pm.environment.set(\"ordemExecucaoId\", pm.response.json().data.id);",
                   "}"
                 ]
               }
@@ -223,9 +223,9 @@
                 "packages": {},
                 "requests": {},
                 "exec": [
-                  "if (pm.response.code === 200 && pm.response.body && pm.response.body.data) {",
-                  "  pm.environment.set(\"ordemExecucaoId\", pm.response.body.data.id);",
-                  "  const servico = (pm.response.body.data.itens || []).find((i) => i.tipo === \"SERVICO\");",
+                  "if (pm.response.code === 200 && pm.response.json() && pm.response.json().data) {",
+                  "  pm.environment.set(\"ordemExecucaoId\", pm.response.json().data.id);",
+                  "  const servico = (pm.response.json().data.itens || []).find((i) => i.tipo === \"SERVICO\");",
                   "  if (servico) {",
                   "    pm.environment.set(\"itemId\", servico.id);",
                   "  }",
@@ -269,8 +269,8 @@
                 "packages": {},
                 "requests": {},
                 "exec": [
-                  "if (pm.response.code === 200 && pm.response.body && Array.isArray(pm.response.body.data) && pm.response.body.data.length > 0) {",
-                  "  pm.environment.set(\"servicoId\", pm.response.body.data[0].id);",
+                  "if (pm.response.code === 200 && pm.response.json() && Array.isArray(pm.response.json().data) && pm.response.json().data.length > 0) {",
+                  "  pm.environment.set(\"servicoId\", pm.response.json().data[0].id);",
                   "}"
                 ]
               }
@@ -306,8 +306,8 @@
                 "packages": {},
                 "requests": {},
                 "exec": [
-                  "if (pm.response.code === 200 && pm.response.body && Array.isArray(pm.response.body.data) && pm.response.body.data.length > 0) {",
-                  "  pm.environment.set(\"insumoId\", pm.response.body.data[0].id);",
+                  "if (pm.response.code === 200 && pm.response.json() && Array.isArray(pm.response.json().data) && pm.response.json().data.length > 0) {",
+                  "  pm.environment.set(\"insumoId\", pm.response.json().data[0].id);",
                   "}"
                 ]
               }
