@@ -219,10 +219,12 @@ Swagger: `/execucao/docs` (JSON em `/execucao/docs-json`) — pelo gateway,
 `/execucao/*` a este serviço sem reescrever o caminho. As rotas estão na tabela da seção
 [Comunicação](#comunicação-).
 
-**Collection:** ainda não há collection Bruno/Postman para as rotas do execution; a do restante
-da solução está em
-[`tc-oficina-os-service/bruno`](https://github.com/FIAP-POS-TECH-SOFTWARE-ARCHITECTURE/tc-oficina-os-service/tree/main/bruno)
-e não cobre `/execucao`.
+**Collection:** [`bruno/Execution-Service`](bruno/Execution-Service) (Bruno) e o export
+[`bruno/execution-service.postman_collection.json`](bruno/execution-service.postman_collection.json)
+(Postman v2.1), com o fluxo do mecânico: login (no os-service), filas de diagnóstico e reparo,
+catálogo, registro ou rejeição do diagnóstico, itens do reparo, conclusão e reparo inviável. A
+do restante da solução está em
+[`tc-oficina-os-service/bruno`](https://github.com/FIAP-POS-TECH-SOFTWARE-ARCHITECTURE/tc-oficina-os-service/tree/main/bruno).
 
 ## Links ✱
 

@@ -1,0 +1,23 @@
+info:
+  name: Servicos
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{url}}/execucao/catalogo/servicos"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body && Array.isArray(res.body.data) && res.body.data.length > 0) {
+          bru.setEnvVar("servicoId", res.body.data[0].id);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

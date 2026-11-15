@@ -1,0 +1,27 @@
+info:
+  name: Pegar Proximo Reparo
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{url}}/execucao/fila/REPARO/proxima"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body && res.body.data) {
+          bru.setEnvVar("ordemExecucaoId", res.body.data.id);
+          const servico = (res.body.data.itens || []).find((i) => i.tipo === "SERVICO");
+          if (servico) {
+            bru.setEnvVar("itemId", servico.id);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
