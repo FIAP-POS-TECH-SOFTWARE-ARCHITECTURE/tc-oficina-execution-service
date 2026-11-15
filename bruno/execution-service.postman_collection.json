@@ -1,0 +1,568 @@
+{
+  "info": {
+    "name": "Execution-Service",
+    "description": null,
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login Mecanico (OS)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "",
+            "url": {
+              "raw": "{{osUrl}}/auth/login",
+              "protocol": "",
+              "host": [
+                "{{osUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"mecanico@oficina.local\",\n  \"senha\": \"Mecanico@2024\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {},
+                "exec": [
+                  "if (pm.response.body && pm.response.body.data && pm.response.body.data.accessToken) {",
+                  "  pm.environment.set(\"token\", pm.response.body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "",
+            "url": {
+              "raw": "{{url}}/health",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Health Ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "",
+            "url": {
+              "raw": "{{url}}/health/ready",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fila",
+      "item": [
+        {
+          "name": "Listar Fila Diagnostico",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/fila?etapa=DIAGNOSTICO",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "fila?etapa=DIAGNOSTICO"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Pegar Proximo Diagnostico",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/fila/DIAGNOSTICO/proxima",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "fila",
+                "DIAGNOSTICO",
+                "proxima"
+              ],
+              "query": [],
+              "variable": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {},
+                "exec": [
+                  "if (pm.response.code === 200 && pm.response.body && pm.response.body.data) {",
+                  "  pm.environment.set(\"ordemExecucaoId\", pm.response.body.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Fila Reparo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/fila?etapa=REPARO",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "fila?etapa=REPARO"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Pegar Proximo Reparo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/fila/REPARO/proxima",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "fila",
+                "REPARO",
+                "proxima"
+              ],
+              "query": [],
+              "variable": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {},
+                "exec": [
+                  "if (pm.response.code === 200 && pm.response.body && pm.response.body.data) {",
+                  "  pm.environment.set(\"ordemExecucaoId\", pm.response.body.data.id);",
+                  "  const servico = (pm.response.body.data.itens || []).find((i) => i.tipo === \"SERVICO\");",
+                  "  if (servico) {",
+                  "    pm.environment.set(\"itemId\", servico.id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Catalogo",
+      "item": [
+        {
+          "name": "Servicos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/catalogo/servicos",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "catalogo",
+                "servicos"
+              ],
+              "query": [],
+              "variable": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {},
+                "exec": [
+                  "if (pm.response.code === 200 && pm.response.body && Array.isArray(pm.response.body.data) && pm.response.body.data.length > 0) {",
+                  "  pm.environment.set(\"servicoId\", pm.response.body.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Insumos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/catalogo/insumos",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "catalogo",
+                "insumos"
+              ],
+              "query": [],
+              "variable": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {},
+                "exec": [
+                  "if (pm.response.code === 200 && pm.response.body && Array.isArray(pm.response.body.data) && pm.response.body.data.length > 0) {",
+                  "  pm.environment.set(\"insumoId\", pm.response.body.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ordens",
+      "item": [
+        {
+          "name": "Detalhe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/ordens/{{ordemExecucaoId}}",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "ordens",
+                "{{ordemExecucaoId}}"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Registrar Diagnostico",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/ordens/{{ordemExecucaoId}}/diagnostico",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "ordens",
+                "{{ordemExecucaoId}}",
+                "diagnostico"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diagnostico\": \"Vazamento na junta do cárter; trocar óleo e filtro.\",\n  \"itens\": [\n    { \"tipo\": \"SERVICO\", \"referenciaId\": \"{{servicoId}}\", \"quantidade\": 1 },\n    { \"tipo\": \"INSUMO\", \"referenciaId\": \"{{insumoId}}\", \"quantidade\": 4 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Rejeitar Diagnostico",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/ordens/{{ordemExecucaoId}}/diagnostico/rejeitar",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "ordens",
+                "{{ordemExecucaoId}}",
+                "diagnostico",
+                "rejeitar"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Motor fundido, sem reparo viável\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar Item",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/ordens/{{ordemExecucaoId}}/reparo/itens/{{itemId}}/iniciar",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "ordens",
+                "{{ordemExecucaoId}}",
+                "reparo",
+                "itens",
+                "{{itemId}}",
+                "iniciar"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Concluir Item",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/ordens/{{ordemExecucaoId}}/reparo/itens/{{itemId}}/concluir",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "ordens",
+                "{{ordemExecucaoId}}",
+                "reparo",
+                "itens",
+                "{{itemId}}",
+                "concluir"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Concluir Reparo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/ordens/{{ordemExecucaoId}}/reparo/concluir",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "ordens",
+                "{{ordemExecucaoId}}",
+                "reparo",
+                "concluir"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Reparo Inviavel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{url}}/execucao/ordens/{{ordemExecucaoId}}/reparo/inviavel",
+              "protocol": "",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "execucao",
+                "ordens",
+                "{{ordemExecucaoId}}",
+                "reparo",
+                "inviavel"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Peça fora de linha no fabricante\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "url",
+      "value": "http://localhost:3001",
+      "type": "default"
+    },
+    {
+      "key": "osUrl",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "ordemExecucaoId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "itemId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "servicoId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "insumoId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "default"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
+}

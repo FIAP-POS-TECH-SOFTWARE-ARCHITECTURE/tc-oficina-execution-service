@@ -1,0 +1,10 @@
+# url e osUrl: URL do API Gateway de homolog (saida api_endpoint do Terraform do tc-oficina-lambda-auth);
+# pelo gateway, /execucao/* vai para este servico e /auth/login para o os-service.
+vars:
+  url: ""
+  osUrl: ""
+  token: ""
+  ordemExecucaoId: ""
+  itemId: ""
+  servicoId: ""
+  insumoId: ""

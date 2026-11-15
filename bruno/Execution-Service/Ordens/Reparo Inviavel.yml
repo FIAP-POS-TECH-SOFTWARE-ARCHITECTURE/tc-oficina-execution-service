@@ -1,0 +1,21 @@
+info:
+  name: Reparo Inviavel
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: "{{url}}/execucao/ordens/{{ordemExecucaoId}}/reparo/inviavel"
+  body:
+    type: json
+    data: |-
+      {
+        "motivo": "Peça fora de linha no fabricante"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
