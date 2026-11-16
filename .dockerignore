@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+coverage-integracao
+.git
+bruno
+dev
+test
+.env
+.env.test

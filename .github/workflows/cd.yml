@@ -1,0 +1,108 @@
+name: CD
+
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-execution-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  testes:
+    name: Testes antes do deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 25, cache: npm }
+      - run: npm ci
+      - run: npx prisma generate
+        env:
+          DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+      - run: npm run lint:check
+      - run: npm run test:cov
+
+  deploy:
+    name: Build e deploy no EKS
+    needs: testes
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Definir ambiente pela branch
+        id: env
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then echo "environment=prod" >> "$GITHUB_OUTPUT";
+          else echo "environment=homolog" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Login no ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, verificação e push da imagem
+        id: meta
+        run: |
+          IMAGE="${{ steps.ecr.outputs.registry }}/oficina-execution-service:${{ steps.env.outputs.environment }}-${{ github.sha }}"
+          docker build -t "$IMAGE" .
+          # Sem contratos/ ou ajv toda mensagem iria para a DLQ; sem o Prisma CLI o Job de migração falha.
+          docker run --rm "$IMAGE" sh -c "node -e \"require('ajv');require('ajv-formats');require('@aws-sdk/client-sqs');require('@aws-sdk/client-sns')\" && ls contratos/schemas/payloads | wc -l && npx prisma --version | head -1"
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Configurar kubeconfig
+        run: aws eks update-kubeconfig --region us-east-1 --name oficina-eks
+
+      - name: Criar/atualizar Secret a partir do SSM
+        run: |
+          ENV=${{ steps.env.outputs.environment }}
+          ler() { aws ssm get-parameter --name "$1" --with-decryption --query Parameter.Value --output text; }
+          # Atribuições isoladas: com `set -e` do Actions, SSM ausente derruba o step aqui,
+          # antes de sobrescrever o Secret em uso com valor vazio.
+          DATABASE_URL=$(ler "/oficina/$ENV/execution/database-url")
+          JWT_SECRET=$(ler "/oficina/$ENV/jwt-secret")
+          INTERNAL_API_KEY=$(ler "/oficina/$ENV/internal-api-key")
+          SNS_EVENTOS_ARN=$(ler "/oficina/$ENV/mensageria/eventos-topic-arn")
+          SQS_EXECUCAO_COMANDOS_URL=$(ler "/oficina/$ENV/mensageria/execucao-comandos-url")
+          kubectl create secret generic execution-service-secrets -n "$ENV" \
+            --from-literal=DATABASE_URL="$DATABASE_URL" \
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --from-literal=INTERNAL_API_KEY="$INTERNAL_API_KEY" \
+            --from-literal=SNS_EVENTOS_ARN="$SNS_EVENTOS_ARN" \
+            --from-literal=SQS_EXECUCAO_COMANDOS_URL="$SQS_EXECUCAO_COMANDOS_URL" \
+            --from-literal=NEW_RELIC_LICENSE_KEY="${{ secrets.NEW_RELIC_LICENSE_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -n "$ENV" -f -
+
+      - name: Migrações do banco
+        run: |
+          ENV=${{ steps.env.outputs.environment }}
+          kubectl delete job execution-service-db-migrate -n "$ENV" --ignore-not-found
+          sed "s|PLACEHOLDER_IMAGE|${{ steps.meta.outputs.image }}|" k8s/base/db-migrate-job.yaml | kubectl apply -n "$ENV" -f -
+          kubectl wait --for=condition=complete job/execution-service-db-migrate -n "$ENV" --timeout=300s
+
+      - name: Aplicar manifests (kustomize) com a imagem do build
+        run: |
+          ENV=${{ steps.env.outputs.environment }}
+          IMAGE="${{ steps.meta.outputs.image }}"
+          sed -i "s|ci-placeholder-image|${IMAGE%:*}|; s|ci-placeholder-tag|${IMAGE##*:}|" "k8s/overlays/$ENV/kustomization.yaml"
+          kubectl apply -k "k8s/overlays/$ENV"
+          kubectl rollout status deployment/execution-service -n "$ENV" --timeout=300s
+
+      - name: Smoke test e publicação do hostname
+        run: |
+          ENV=${{ steps.env.outputs.environment }}
+          for i in $(seq 1 30); do
+            HOST=$(kubectl get svc execution-service -n "$ENV" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || true)
+            if [ -n "$HOST" ] && curl -fsS "http://$HOST/health/ready" > /dev/null; then break; fi
+            [ "$i" = "30" ] && { echo "health check falhou (hostname='$HOST')"; exit 1; }
+            sleep 10
+          done
+          kubectl logs deployment/execution-service -n "$ENV" --since=10m | grep -q mensageria.consumidor_iniciado
+          aws ssm put-parameter --name "/oficina/$ENV/execution-service-lb-hostname" --value "$HOST" --type String --overwrite
+          echo "execution-service ($ENV) em http://$HOST"

@@ -1,0 +1,8 @@
+vars:
+  url: http://localhost:3001
+  osUrl: http://localhost:3000
+  token: ""
+  ordemExecucaoId: ""
+  itemId: ""
+  servicoId: ""
+  insumoId: ""

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: execution-service
+  labels:
+    app: execution-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: execution-service
+  ports:
+    - port: 80
+      targetPort: 3000
