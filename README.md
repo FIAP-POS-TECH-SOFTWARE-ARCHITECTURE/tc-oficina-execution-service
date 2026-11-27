@@ -240,7 +240,7 @@ do restante da solução está em
   [`tc-oficina-lambda-auth`](https://github.com/FIAP-POS-TECH-SOFTWARE-ARCHITECTURE/tc-oficina-lambda-auth) ·
   [`tc-oficina-infra-k8s`](https://github.com/FIAP-POS-TECH-SOFTWARE-ARCHITECTURE/tc-oficina-infra-k8s) ·
   [`tc-oficina-infra-db`](https://github.com/FIAP-POS-TECH-SOFTWARE-ARCHITECTURE/tc-oficina-infra-db)
-- **Vídeo de demonstração:** a publicar.
+- **Vídeo de demonstração:** <https://www.youtube.com/watch?v=Sf_hejh9kxk> (não listado, 14:38).
 
 ## Grupo Integradores
 
